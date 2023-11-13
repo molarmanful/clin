@@ -1,4 +1,7 @@
-{:aliases {:main {:main-opts ["-m" "clin.main"]},
+{:aliases {:build {:deps {io.github.clojure/tools.build {:git/sha "SHA",
+                                                         :git/tag "TAG"}},
+                   :ns-default build},
+           :main {:main-opts ["-m" "clin.main"]},
            :repl/conjure
              {:extra-deps {cider/cider-nrepl {:mvn/version "0.43.3"},
                            nrepl/nrepl {:mvn/version "1.1.0"}},
