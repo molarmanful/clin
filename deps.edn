@@ -1,6 +1,8 @@
-{:aliases {:repl/conjure
+{:aliases {:main {:main-opts ["-m" "clin.main"]},
+           :repl/conjure
              {:extra-deps {cider/cider-nrepl {:mvn/version "0.43.3"},
                            nrepl/nrepl {:mvn/version "1.1.0"}},
               :main-opts ["--main" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]" "--interactive"]}},
- :deps {org.clojure/core.match {:mvn/version "1.0.1"}}}
+ :deps {org.clojure/core.match {:mvn/version "1.0.1"}},
+ :paths ["src" "resources"]}

@@ -13,8 +13,8 @@
 (defmulti toCMD :type)
 (defmulti wCMD :type)
 
-(defmethod wNUM :default [x] (NUM x))
+(defmethod wNUM :default [x] (->NUM x))
 
-(defmethod wSTR :default [x] (STR x))
+(defmethod wSTR :default [x] (->STR x))
 
-(defmethod wCMD :default [x] (CMD x))
+(defmethod wCMD :default [x] (->CMD x))
