@@ -1,7 +1,7 @@
 (ns clin.parser
-  (:require [clojure.string :as str])
-  (:require [clojure.core.match :refer [match]])
-  (:require [clin.any :as any]))
+  (:require [clojure.string :as str]
+            [clojure.core.match :refer [match]]
+            [clin.any :as any]))
 
 (defrecord Parser [xs x t])
 (def dParser (->Parser (lazy-seq []) "" ::UN))
@@ -36,7 +36,7 @@
   [{:keys [_ _ t], :as p} c]
   (match t
     (:or ::DEC ::NUM) (addc p c)
-    :else (assoc (clean p) :t ::NUM)))
+    :else (assoc (addc (clean p) c) :t ::NUM)))
 
 (defn pdot
   [{:keys [_ _ t], :as p}]
