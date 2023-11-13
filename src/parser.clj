@@ -43,8 +43,8 @@
     :else (match c
             \" (assoc (clean p) :t :STR)
             \. (pdot p)
-            (true :<< Character/isDigit) (pnum p c)
-            (true :<< Character/isWhitespace) (clean p)
+            (_ :guard Character/isDigit) (pnum p c)
+            (_ :guard Character/isWhitespace) (clean p)
             :else (pcmd p c))))
 
 (defn parse-line [s] (reduce choice dParser s))
