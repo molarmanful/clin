@@ -1,4 +1,4 @@
-(ns any)
+(ns clin.any)
 
 (defrecord NUM [x])
 (defrecord STR [x])
