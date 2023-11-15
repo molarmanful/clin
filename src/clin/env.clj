@@ -34,7 +34,9 @@
        (map any/show)
        (str/join " ")))
 
-(defn set-code [env x] (assoc-in env [:code :x] x))
+(defn set-code
+  [{code :code, :as env} x]
+  (assoc env :code (any/->FN x (.-f code) (.-n code))))
 
 (defn arg
   [n {stack :stack, :as env} f]
@@ -114,9 +116,9 @@
     :else (push env t)))
 
 (defn exec
-  [{{x :x} :code, :as env}]
+  [{code :code, :as env}]
   (println (show env))
-  (match x
+  (match (.-x code)
     ([] :seq) env
     ([t & ts] :seq) (-> env
                         (step t)

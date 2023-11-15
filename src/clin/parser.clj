@@ -20,7 +20,7 @@
                  "." [(any/->CMD ".")]
                  (\. :<< last) [(any/->CMD (butlast x))]
                  :else [x])
-         ::NUM [(any/toNUM x)]
+         ::NUM [(any/toNum x)]
          :else [])
        (lazy-cat xs)
        (assoc dParser :xs)))

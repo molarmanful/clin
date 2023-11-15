@@ -20,16 +20,27 @@
 (defrecord CMD [x]
   Object
     (toString [_] x))
+
 (defn CMD? [x] (instance? CMD x))
 
-(defrecord FN [x f n]
+(declare FN?)
+(deftype FN [x f n]
+  clojure.lang.ISeq
+    (cons [_ o] (FN. (cons o x) f n))
+    (empty [_] (FN. (empty x) f n))
+    (equiv [_ {x1 :x, :as o}] (and (FN? o) (= x x1)))
+    (first [_] (first x))
+    (more [_] (FN. (rest x) f n))
+    (next [_] (FN. (next x) f n))
+    (seq [t] (if (seq t) t nil))
   Object
-    (toString [_] (str/join " " x))
-  Itr
-    (seq [_] x))
+    (toString [_] (str x)))
+
 (defn FN? [x] (instance? FN x))
+
 (def dFN (->FN (lazy-seq []) "" 0))
-(defn eFN [x {{:keys [f n]} :code}] (->FN x f n))
+
+(defn eFN [x {code :code}] (->FN x (.-f code) (.-n code)))
 
 ;POLY
 
@@ -81,7 +92,7 @@
 
 (defmethod a-get SEQ [xs n] (nth xs (util/-i xs (toNum n)) :NF))
 (defmethod a-get ARR [xs n] (get xs (util/-i xs (toNum n)) :NF))
-(defmethod a-get FN [{x :x} n] (recur x n))
+(defmethod a-get FN [t n] (recur (.-x t) n))
 (defmethod a-get CMD [{x :x} n] (recur x n))
 (defmethod a-get nil [_ _] :NF)
 (defmethod a-get :default [xs n] (get xs n :NF))
