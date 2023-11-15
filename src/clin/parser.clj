@@ -6,45 +6,51 @@
 (defrecord Parser [xs x t])
 (def dParser (->Parser (lazy-seq []) "" ::UN))
 
-(defn addc [{:keys [_ x _], :as p} c] (assoc p :x (str x c)))
+(defn addc [{x :x, :as p} c] (assoc p :x (str x c)))
 
 (defn clean
   [{:keys [xs x t]}]
-  (assoc dParser
-    :xs (concat xs
-                (match t
-                  ::ESC [(any/wSTR (str x \\))]
-                  ::STR [(any/wSTR x)]
-                  ::CMD [(if (every? (fn [c] (str/includes? "([{}])" (str c)))
-                                     x)
-                           (map (comp any/wSTR str) x)
-                           (any/wCMD x))]
-                  ::DEC (match x
-                          "." [(any/wCMD ".")]
-                          (\. :<< last) [(any/wCMD (butlast x))]
-                          :else [(any/wNUM x)])
-                  ::NUM [(any/wNUM x)]
-                  :else []))))
+  (->> (match t
+         ::ESC [(str x \\)]
+         ::STR [x]
+         ::CMD [(if (every? #(str/includes? "([{}])" (str %)) x)
+                  (map str x)
+                  (any/->CMD x))]
+         ::DEC (match x
+                 "." [(any/->CMD ".")]
+                 (\. :<< last) [(any/->CMD (butlast x))]
+                 :else [x])
+         ::NUM [(any/toNUM x)]
+         :else [])
+       (lazy-cat xs)
+       (assoc dParser :xs)))
 
 (defn pcmd
-  [{:keys [_ _ t], :as p} c]
+  [{t :t, :as p} c]
   (match t
     ::CMD (addc p c)
-    :else (assoc (addc (clean p) c) :t ::CMD)))
+    :else (-> p
+              clean
+              (addc c)
+              (assoc :t ::CMD))))
 
 (defn pnum
-  [{:keys [_ _ t], :as p} c]
+  [{t :t, :as p} c]
   (match t
     (:or ::DEC ::NUM) (addc p c)
-    :else (assoc (addc (clean p) c) :t ::NUM)))
+    :else (-> p
+              clean
+              (addc c)
+              (assoc :t ::NUM))))
 
 (defn pdot
-  [{:keys [_ _ t], :as p}]
-  (assoc (addc (match t
-                 ::NUM p
-                 :else (clean p))
-               \.)
-    :t ::DEC))
+  [{t :t, :as p}]
+  (as-> p $
+    (match t
+      ::NUM $
+      :else (clean $))
+    (addc $ \.)
+    (assoc $ :t ::DEC)))
 
 (defn pstr
   [p c]
@@ -55,14 +61,14 @@
 
 (defn pesc
   [p c]
-  (assoc (addc p
-               (match c
-                 \" "\""
-                 :else (str \\ c)))
-    :t ::STR))
+  (-> p
+      (addc (match c
+              \" "\""
+              :else (str \\ c)))
+      (assoc :t ::STR)))
 
 (defn choice
-  [{:keys [_ _ t], :as p} c]
+  [{t :t, :as p} c]
   (match t
     ::ESC (pesc p c)
     ::STR (pstr p c)
@@ -73,6 +79,16 @@
             (_ :guard Character/isWhitespace) (clean p)
             :else (pcmd p c))))
 
-(defn parse-line [s] (.xs (clean (reduce choice dParser s))))
+(defn parse-line
+  [s]
+  (->> s
+       (reduce choice dParser)
+       clean
+       .xs))
 
-(defn parse [s] (parse-line (first (str/split-lines s))))
+(defn parse
+  [s]
+  (-> s
+      str/split-lines
+      first
+      parse-line))
