@@ -56,8 +56,8 @@
 (defmethod show nil [_] "UN")
 (defmethod show :default [x] (str x))
 
-;TODO: toTF
 ;TODO: toSTR? (join "" for seqs)
+;TODO: vec
 
 (defmethod toTF TF [x] x)
 (defmethod toTF Num [x] (not= x 0))
