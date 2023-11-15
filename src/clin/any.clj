@@ -5,7 +5,8 @@
 
 ;CUSTOM
 
-(def ARR clojure.lang.PersistentVector)
+(def ARR clojure.lang.IPersistentVector)
+(def Itr clojure.lang.Seqable)
 (def SEQ clojure.lang.LazySeq)
 (def STR String)
 (def Num Number)
@@ -23,7 +24,10 @@
 
 (defrecord FN [x f n]
   Object
-    (toString [_] (str/join " " x)))
+    (toString [_] (str/join " " x))
+  Itr
+    (seq [_] x))
+(defn FN? [x] (instance? FN x))
 (def dFN (->FN (lazy-seq []) "" 0))
 (defn eFN [x {{:keys [f n]} :code}] (->FN x f n))
 
@@ -49,36 +53,43 @@
 (defmethod show CHR
   [x]
   (as-> x $ (str/escape $ (assoc char-escape-string \' "\\'")) (str "'" $ "'")))
-(defmethod show :default
-  [x]
-  (match x
-    nil "UN"
-    :else (str x)))
+(defmethod show nil [_] "UN")
+(defmethod show :default [x] (str x))
 
 ;TODO: toTF
 ;TODO: toSTR? (join "" for seqs)
 
 (defmethod toTF TF [x] x)
 (defmethod toTF Num [x] (not= x 0))
+(defmethod toTF Itr [x] (boolean (not-empty x)))
+(defmethod toTF nil [_] false)
 (defmethod toTF :default [x] (boolean x))
 
 (defmethod toNum Num [x] x)
 (defmethod toNum TF [x] (if x 1 0))
 (defmethod toNum CHR [x] (long x))
+(defmethod toNum nil [_] 0)
 (defmethod toNum :default [x] (bigdec (str x)))
 
+(defmethod toINT INT [x] x)
 (defmethod toINT :default [x] (long (toNum x)))
 
 (defmethod toCHR CHR [x] x)
 (defmethod toCHR Num [x] (char x))
+(defmethod toCHR nil [_] \u0000)
 (defmethod toCHR :default [x] (recur (first x)))
 
-(defmethod a-get SEQ [xs n] (nth xs (util/-i xs (toNum n)) nil))
-(defmethod a-get ARR [xs n] (get xs (util/-i xs (toNum n))))
+(defmethod a-get SEQ [xs n] (nth xs (util/-i xs (toNum n)) :NF))
+(defmethod a-get ARR [xs n] (get xs (util/-i xs (toNum n)) :NF))
 (defmethod a-get FN [{x :x} n] (recur x n))
 (defmethod a-get CMD [{x :x} n] (recur x n))
-(defmethod a-get :default [xs n] (get xs n :not-found))
+(defmethod a-get nil [_ _] :NF)
+(defmethod a-get :default [xs n] (get xs n :NF))
 
 ;UTIL
 
-(defn numx [f & xs] (apply f (map toNum xs)))
+(defn numx
+  [f & xs]
+  (->> xs
+       (map toNum)
+       (apply f)))

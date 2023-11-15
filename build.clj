@@ -13,8 +13,8 @@
   [_]
   (clean nil)
   (b/copy-dir {:src-dirs ["src" "resources"], :target-dir class-dir})
-  (b/compile-clj {:basis basis, :ns-compile '[clin.main], :class-dir class-dir})
+  (b/compile-clj {:basis basis, :ns-compile '[clin.core], :class-dir class-dir})
   (b/uber {:class-dir class-dir,
            :uber-file uber-file,
            :basis basis,
-           :main 'clin.main}))
+           :main 'clin.core}))

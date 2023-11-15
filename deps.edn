@@ -1,6 +1,6 @@
 {:aliases {:build {:deps {io.github.clojure/tools.build {:mvn/version "0.9.6"}},
                    :ns-default build},
-           :main {:main-opts ["-m" "clin.main"]},
+           :main {:main-opts ["-m" "clin.core"]},
            :repl/conjure
              {:extra-deps {cider/cider-nrepl {:mvn/version "0.43.3"},
                            nrepl/nrepl {:mvn/version "0.1.0"}},
