@@ -8,12 +8,13 @@
 (def ARR clojure.lang.PersistentVector)
 (def SEQ clojure.lang.LazySeq)
 (def STR String)
-(def TF Boolean)
-(def CHR Character)
+(def Num Number)
 (def NUM BigDecimal)
 (def DBL Double)
 (def INT Long)
 (def BIG BigInteger)
+(def TF Boolean)
+(def CHR Character)
 
 (defrecord CMD [x]
   Object
@@ -29,13 +30,11 @@
 ;POLY
 
 (defmulti show type)
-(defmulti a-get type)
 (defmulti toTF type)
-(defmulti toCHR type)
-(defmulti toNUM type)
-(defmulti toDBL type)
+(defmulti toNum type)
 (defmulti toINT type)
-(defmulti toBIG type)
+(defmulti toCHR type)
+(defmulti a-get type)
 
 (defmethod show TF [x] (if x "$T" "$F"))
 (defmethod show CMD [{x :x}] x)
@@ -56,37 +55,30 @@
     nil "UN"
     :else (str x)))
 
-(defmethod toCHR NUM [x] (char x))
-(defmethod toCHR Number [x] (char x))
+;TODO: toTF
+;TODO: toSTR? (join "" for seqs)
+
+(defmethod toTF TF [x] x)
+(defmethod toTF Num [x] (not= x 0))
+(defmethod toTF :default [x] (boolean x))
+
+(defmethod toNum Num [x] x)
+(defmethod toNum TF [x] (if x 1 0))
+(defmethod toNum CHR [x] (long x))
+(defmethod toNum :default [x] (bigdec (str x)))
+
+(defmethod toINT :default [x] (long (toNum x)))
+
 (defmethod toCHR CHR [x] x)
-(defmethod toCHR :default [x] (char (first x)))
+(defmethod toCHR Num [x] (char x))
+(defmethod toCHR :default [x] (recur (first x)))
 
-(defmethod toNUM NUM [x] x)
-(defmethod toNUM Number [x] (bigdec x))
-(defmethod toNUM CHR [x] (toNUM (toINT x)))
-(defmethod toNUM :default [x] (bigdec (str x)))
-
-(defmethod toDBL DBL [x] x)
-(defmethod toDBL Number [x] (double x))
-(defmethod toDBL CHR [x] (toDBL (toINT x)))
-(defmethod toDBL :default [x] (Double/parseDouble (str x)))
-
-(defmethod toINT INT [x] x)
-(defmethod toINT Number [x] (long x))
-(defmethod toINT CHR [x] (long x))
-(defmethod toINT :default [x] (Long/parseLong (str x)))
-
-(defmethod toBIG BIG [x] x)
-(defmethod toBIG Number [x] (bigint x))
-(defmethod toBIG CHR [x] (bigint x))
-(defmethod toBIG :default [x] (bigint (str x)))
-
-(defmethod a-get SEQ [xs n] (nth xs (util/-i xs n) nil))
-(defmethod a-get ARR [xs n] (get xs (util/-i xs n)))
+(defmethod a-get SEQ [xs n] (nth xs (util/-i xs (toNum n)) nil))
+(defmethod a-get ARR [xs n] (get xs (util/-i xs (toNum n))))
 (defmethod a-get FN [{x :x} n] (recur x n))
 (defmethod a-get CMD [{x :x} n] (recur x n))
 (defmethod a-get :default [xs n] (get xs n :not-found))
 
 ;UTIL
 
-(defn numx [f & xs] (apply f (map toNUM xs)))
+(defn numx [f & xs] (apply f (map toNum xs)))
