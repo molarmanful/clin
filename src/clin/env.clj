@@ -12,7 +12,10 @@
 
 (defn s-get
   [{stack :stack} n]
-  (let [i (util/-i stack (bit-not n))]
+  (let [i (->> n
+               any/toINT
+               bit-not
+               (util/-i stack))]
     (if (<= 0 i (dec (count stack)))
       (any/a-get stack (bit-not n))
       (-> (str "stack len < ")
