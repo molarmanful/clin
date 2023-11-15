@@ -7,6 +7,8 @@
 
 (def ARR clojure.lang.IPersistentVector)
 (def Itr clojure.lang.Seqable)
+(def Idx clojure.lang.Indexed)
+(def Seq clojure.lang.ISeq)
 (def SEQ clojure.lang.LazySeq)
 (def STR String)
 (def Num Number)
@@ -40,7 +42,9 @@
 
 (def dFN (->FN (lazy-seq []) "" 0))
 
-(defn eFN [x {code :code}] (->FN x (.-f code) (.-n code)))
+(defn xFN [x t] (->FN x (.-f t) (.-n t)))
+
+(defn eFN [x {code :code}] (xFN x code))
 
 ;POLY
 
@@ -49,7 +53,10 @@
 (defmulti toNum type)
 (defmulti toINT type)
 (defmulti toCHR type)
-(defmulti a-get type)
+(defmulti a-get
+  #(-> [(type %) (integer? %2)]))
+(defmulti a-rem
+  #(-> [(type %) (integer? %2)]))
 
 (defmethod show TF [x] (if x "$T" "$F"))
 (defmethod show CMD [{x :x}] x)
@@ -90,12 +97,30 @@
 (defmethod toCHR nil [_] \u0000)
 (defmethod toCHR :default [x] (recur (first x)))
 
-(defmethod a-get SEQ [xs n] (nth xs (util/-i xs (toNum n)) :NF))
-(defmethod a-get ARR [xs n] (get xs (util/-i xs (toNum n)) :NF))
-(defmethod a-get FN [t n] (recur (.-x t) n))
-(defmethod a-get CMD [{x :x} n] (recur x n))
-(defmethod a-get nil [_ _] :NF)
-(defmethod a-get :default [xs n] (get xs n :NF))
+(defmethod a-get [SEQ true] [xs n] (nth xs (util/-i xs n) nil))
+(defmethod a-get [ARR true] [xs n] (get xs (util/-i xs n)))
+(defmethod a-get [FN true] [t n] (recur (.-x t) n))
+(defmethod a-get [CMD ::default] [{x :x} n] (recur x n))
+(defmethod a-get [Idx false] [xs n] (recur xs (toNum n)))
+(defmethod a-get :default [xs n] (get xs n))
+
+(defmethod a-rem [SEQ true]
+  [xs n]
+  (let [[a b] (split-at (util/-i xs n) xs)] (lazy-cat a (rest b))))
+(defmethod a-rem [FN true]
+  [xs n]
+  (-> xs
+      .-x
+      (a-rem n)
+      (xFN xs)))
+(defmethod a-rem [ARR true]
+  [xs n]
+  (let [i (util/-i xs n)] (into (subvec xs 0 i) (subvec xs (inc i)))))
+(defmethod a-rem [STR true]
+  [xs n]
+  (let [i (util/-i xs n)] (str (subs xs 0 i) (subs xs (inc i)))))
+(defmethod a-get [Idx false] [xs n] (recur xs (toNum n)))
+(defmethod a-rem :default [xs n] (recur (str xs) n))
 
 ;UTIL
 

@@ -12,13 +12,14 @@
 
 (defn s-get
   [{stack :stack} n]
-  (let [i (->> n
+  (let [l (count stack)
+        i (->> n
                any/toINT
                bit-not
                (util/-i stack))]
-    (if (<= 0 i (dec (count stack)))
+    (if (<= 0 i (dec l))
       (any/a-get stack (bit-not n))
-      (-> (str "stack len < ")
+      (-> (str "stack len " l " < " n)
           Exception.
           throw))))
 
@@ -34,9 +35,7 @@
        (map any/show)
        (str/join " ")))
 
-(defn set-code
-  [{code :code, :as env} x]
-  (assoc env :code (any/->FN x (.-f code) (.-n code))))
+(defn set-code [env x] (assoc env :code (any/eFN x env)))
 
 (defn arg
   [n {stack :stack, :as env} f]
@@ -46,7 +45,10 @@
           Exception.
           throw)
       (let [[xs ys] (split-at (- l n) stack)]
-        (as-> env $ (assoc $ :stack xs) (cons $ ys) (apply f $))))))
+        (-> env
+            (assoc :stack xs)
+            (cons ys)
+            (#(apply f %)))))))
 
 (defn mods
   [n env f]
@@ -61,9 +63,23 @@
 
 ;LIB
 
-(defn PICK [env] (arg 1 env #(push % (s-get % %1))))
+(defn PICK
+  [env]
+  (arg 1
+       env
+       (fn [env n]
+         (->> n
+              (s-get env)
+              (push env)))))
 
-;(defn NIX [env] (arg 1 env (fn [{stack :stack} n] ())))
+(defn NIX
+  [env]
+  (arg 1
+       env
+       (fn [{stack :stack, :as env} n]
+         (->> n
+              (any/a-rem stack)
+              (assoc env :stack)))))
 
 (defn DUP
   [env]
@@ -93,6 +109,7 @@
 
 (def cmds
   {"pick" PICK,
+   "nix" NIX,
    "dup" DUP,
    "over" OVER,
    "pop" POP,
