@@ -1,9 +1,8 @@
 (ns clin.any
   (:require [clojure.string :as str]
-            [clin.util :as util]
-            [clojure.core.match :refer [match]]))
+            [clin.util :as util]))
 
-;CUSTOM
+;;; ALIASES
 
 (def ARR clojure.lang.IPersistentVector)
 (def Itr clojure.lang.Seqable)
@@ -18,6 +17,8 @@
 (def BIG BigInteger)
 (def TF Boolean)
 (def CHR Character)
+
+;;; CUSTOM TYPES
 
 (defrecord CMD [x]
   Object
@@ -34,7 +35,7 @@
     (first [_] (first x))
     (more [_] (FN. (rest x) f n))
     (next [_] (FN. (next x) f n))
-    (seq [t] (if (seq t) t nil))
+    (seq [t] (if (seq x) t nil))
   Object
     (toString [_] (str x)))
 
@@ -46,13 +47,25 @@
 
 (defn eFN [x {code :code}] (xFN x code))
 
-;POLY
+;;; HIERARCHY
+
+(derive Itr ::Itrs)
+(derive ::Idx ::Itrs)
+
+(derive Idx ::Idx)
+(derive ::Str ::Idx)
+
+(derive STR ::Str)
+(derive CMD ::Str)
+
+;;; MULTIMETHODS
 
 (defmulti show type)
 (defmulti toTF type)
 (defmulti toNum type)
 (defmulti toINT type)
 (defmulti toCHR type)
+(defmulti vecz? type)
 (defmulti a-get
   #(-> [(type %) (integer? %2)]))
 (defmulti a-rem
@@ -77,11 +90,10 @@
 (defmethod show :default [x] (str x))
 
 ;TODO: toSTR? (join "" for seqs)
-;TODO: vec
 
 (defmethod toTF TF [x] x)
 (defmethod toTF Num [x] (not= x 0))
-(defmethod toTF Itr [x] (boolean (not-empty x)))
+(defmethod toTF ::Itr [x] (boolean (not-empty x)))
 (defmethod toTF nil [_] false)
 (defmethod toTF :default [x] (boolean x))
 
@@ -99,11 +111,13 @@
 (defmethod toCHR nil [_] \u0000)
 (defmethod toCHR :default [x] (recur (first x)))
 
+(defmethod vecz? Itr [_] true)
+
 (defmethod a-get [SEQ true] [xs n] (nth xs (util/-i xs n) nil))
-(defmethod a-get [ARR true] [xs n] (get xs (util/-i xs n)))
 (defmethod a-get [FN true] [t n] (recur (.-x t) n))
+(defmethod a-get [::Idx true] [xs n] (get xs (util/-i xs n)))
 (defmethod a-get [CMD ::default] [{x :x} n] (recur x n))
-(defmethod a-get [Idx false] [xs n] (recur xs (toNum n)))
+(defmethod a-get [::Idx false] [xs n] (recur xs (toNum n)))
 (defmethod a-get :default [xs n] (get xs n))
 
 (defmethod a-rem [SEQ true]
@@ -121,13 +135,15 @@
 (defmethod a-rem [STR true]
   [xs n]
   (let [i (util/-i xs n)] (str (subs xs 0 i) (subs xs (inc i)))))
-(defmethod a-get [Idx false] [xs n] (recur xs (toNum n)))
+(defmethod a-get [::Idx false] [xs n] (recur xs (toNum n)))
 (defmethod a-rem :default [xs n] (recur (str xs) n))
 
-;UTIL
+;;; UTIL
 
 (defn numx
   [f & xs]
   (->> xs
        (map toNum)
        (apply f)))
+
+(defn vecz [n f & xs] ())

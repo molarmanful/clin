@@ -8,7 +8,7 @@
 (defrecord ENV [code lines stack scope gscope])
 (def dENV (->ENV any/dFN {} [] {} {}))
 
-;UTIL
+;;; HELPERS
 
 (defn s-get
   [{stack :stack} n]
@@ -62,7 +62,7 @@
 
 (defn modx [n env f] (mods n env (fn [& xs] [(apply f xs)])))
 
-;LIB
+;;; LIB
 
 (defn PICK
   [env]
@@ -94,7 +94,7 @@
       (push 1)
       PICK))
 
-(defn POP [env] (arg 1 env #(%)))
+(defn POP [env] (arg 1 env (fn [x _] x)))
 
 (defn NIP [env] (modx 2 env #(%2)))
 
@@ -125,7 +125,7 @@
     (f env)
     (throw (.Exception (str "cmd " s " not found")))))
 
-;RUN
+;;; RUN
 
 (defn step
   [env t]
