@@ -17,7 +17,6 @@
                any/toINT
                bit-not
                (util/-i stack))]
-    (println n i)
     (if (<= 0 i (dec l))
       (any/a-get stack i)
       (-> (str "stack len " l " < " n)
@@ -40,16 +39,17 @@
 
 (defn arg
   [n {stack :stack, :as env} f]
-  (let [l (count stack)]
-    (if (> n l)
+  (let [n (any/toINT n)
+        l (count stack)
+        i (- l n)]
+    (if (neg? i)
       (-> (str "stack len " l " < " n)
           Exception.
           throw)
-      (let [[xs ys] (split-at (- l n) stack)]
-        (-> env
-            (assoc :stack xs)
-            (cons ys)
-            (#(apply f %)))))))
+      (-> env
+          (assoc :stack (subvec stack 0 i))
+          (cons (subvec stack i))
+          (#(apply f %))))))
 
 (defn mods
   [n env f]
