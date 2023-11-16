@@ -17,8 +17,9 @@
                any/toINT
                bit-not
                (util/-i stack))]
+    (println n i)
     (if (<= 0 i (dec l))
-      (any/a-get stack (bit-not n))
+      (any/a-get stack i)
       (-> (str "stack len " l " < " n)
           Exception.
           throw))))
