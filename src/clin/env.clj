@@ -49,7 +49,7 @@
       (-> env
           (assoc :stack (subvec stack 0 i))
           (cons (subvec stack i))
-          (#(apply f %))))))
+          (as-> $ (apply f $))))))
 
 (defn mods
   [n env f]
@@ -61,6 +61,8 @@
               (apply push env)))))
 
 (defn modx [n env f] (mods n env (fn [& xs] [(apply f xs)])))
+
+(defn numx [n env f] (modx n env #(apply any/numx f %&)))
 
 ;;; LIB
 
@@ -82,17 +84,9 @@
               (any/a-rem stack)
               (assoc env :stack)))))
 
-(defn DUP
-  [env]
-  (-> env
-      (push 0)
-      PICK))
+(defn DUP [env] (push env (s-get env 0)))
 
-(defn OVER
-  [env]
-  (-> env
-      (push 1)
-      PICK))
+(defn OVER [env] (push env (s-get env 1)))
 
 (defn POP [env] (arg 1 env (fn [x _] x)))
 
@@ -104,9 +98,17 @@
         env
         #(-> [%2 %])))
 
-(defn NEG [env] (modx 1 env #(any/numx - %)))
+(defn NEG [env] (numx 1 env -))
 
-(defn ADD [env] (modx 2 env #(any/numx + % %2)))
+(defn ADD [env] (numx 2 env +))
+
+(defn SUB [env] (numx 2 env -))
+
+(defn MUL [env] (numx 2 env *))
+
+(defn DIV [env] (numx 2 env /))
+
+(defn MOD [env] (numx 2 env mod))
 
 (def cmds
   {"pick" PICK,
@@ -117,7 +119,11 @@
    "nip" NIP,
    "swap" SWAP,
    "_" NEG,
-   "+" ADD})
+   "+" ADD,
+   "-" SUB,
+   "*" MUL,
+   "/" DIV,
+   "%" MOD})
 
 (defn cmd
   [s env]
@@ -126,6 +132,9 @@
     (throw (.Exception (str "cmd " s " not found")))))
 
 ;;; RUN
+
+;TODO: toFN tail
+(defn f-eval [env f] (if (any/FN? f) () ()))
 
 (defn step
   [env t]
@@ -148,4 +157,4 @@
   (->> s
        parser/parse
        (set-code dENV)
-       exec))
+       (trampoline exec)))

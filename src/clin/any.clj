@@ -7,7 +7,6 @@
 (def ARR clojure.lang.IPersistentVector)
 (def Itr clojure.lang.Seqable)
 (def Idx clojure.lang.Indexed)
-(def Seq clojure.lang.ISeq)
 (def SEQ clojure.lang.LazySeq)
 (def STR String)
 (def Num Number)
@@ -54,6 +53,10 @@
 
 (derive Idx ::Idx)
 (derive ::Str ::Idx)
+(derive ::Lazy ::Idx)
+
+(derive SEQ ::Lazy)
+(derive FN ::Lazy)
 
 (derive STR ::Str)
 (derive CMD ::Str)
@@ -63,6 +66,7 @@
 (defmulti show type)
 (defmulti toTF type)
 (defmulti toNum type)
+(defmulti toItr type)
 (defmulti toINT type)
 (defmulti toCHR type)
 (defmulti vecz? type)
@@ -80,12 +84,12 @@
   [x]
   (-> x
       (str/escape (assoc char-escape-string \" "\\\""))
-      (#(str "\"" % "\""))))
+      (as-> $ (str "\"" $ "\""))))
 (defmethod show CHR
   [x]
   (-> x
       (str/escape (assoc char-escape-string \' "\\'"))
-      (#(str "'" % "'"))))
+      (as-> $ (str "'" $ "'"))))
 (defmethod show nil [_] "UN")
 (defmethod show :default [x] (str x))
 
@@ -112,13 +116,14 @@
 (defmethod toCHR :default [x] (recur (first x)))
 
 (defmethod vecz? Itr [_] true)
+(defmethod vecz? :default [_] false)
 
-(defmethod a-get [SEQ true] [xs n] (nth xs (util/-i xs n) nil))
-(defmethod a-get [FN true] [t n] (recur (.-x t) n))
-(defmethod a-get [::Idx true] [xs n] (get xs (util/-i xs n)))
-(defmethod a-get [CMD ::default] [{x :x} n] (recur x n))
-(defmethod a-get [::Idx false] [xs n] (recur xs (toNum n)))
-(defmethod a-get :default [xs n] (get xs n))
+(defmethod a-get [SEQ true] [xs i] (nth xs (util/-i xs i) nil))
+(defmethod a-get [FN true] [t i] (recur (.-x t) i))
+(defmethod a-get [CMD true] [{x :x} i] (get x (util/-i x i)))
+(defmethod a-get [::Idx true] [xs i] (get xs (util/-i xs i)))
+(defmethod a-get [::Idx false] [xs i] (recur xs (toNum i)))
+(defmethod a-get :default [xs i] (get xs i))
 
 (defmethod a-rem [SEQ true]
   [xs n]
@@ -140,10 +145,17 @@
 
 ;;; UTIL
 
-(defn numx
+(defn vecz
   [f & xs]
-  (->> xs
-       (map toNum)
-       (apply f)))
+  (let [[v t l] (reduce (fn [[v t l] x]
+                          (let [t1 (vecz? x)
+                                v1 (if t1 x (repeat x))
+                                l1 (isa? (type x) ::Lazy)]
+                            [(conj v v1) (or t t1) (or l l1)]))
+                  [[] false]
+                  xs)]
+    (if t
+      (let [v1 (apply map #(apply vecz f %&) v)] (if l v1 (vec v1)))
+      (apply f xs))))
 
-(defn vecz [n f & xs] ())
+(defn numx [f & xs] (apply vecz #(apply f (map toNum %&)) xs))

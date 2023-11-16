@@ -6,5 +6,5 @@
 
 (comment
   (use '[clin.env])
-  (run "2 3 0.5 pop 1_ pick")
+  (run "1_")
   ())
