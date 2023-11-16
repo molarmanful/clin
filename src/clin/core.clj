@@ -2,4 +2,4 @@
   (:require [clin.env :as env])
   (:gen-class))
 
-(defn -main [& args] (env/run "2 3 5 0pick 1pick"))
+(defn -main [& args] (env/run "2 3 0.5 0pick 1_ pick"))

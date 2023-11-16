@@ -65,12 +65,14 @@
 (defmethod show ARR [xs] (str (map show xs)))
 (defmethod show STR
   [x]
-  (as-> x $
-    (str/escape $ (assoc char-escape-string \" "\\\""))
-    (str "\"" $ "\"")))
+  (-> x
+      (str/escape (assoc char-escape-string \" "\\\""))
+      (#(str "\"" % "\""))))
 (defmethod show CHR
   [x]
-  (as-> x $ (str/escape $ (assoc char-escape-string \' "\\'")) (str "'" $ "'")))
+  (-> x
+      (str/escape (assoc char-escape-string \' "\\'"))
+      (#(str "'" % "'"))))
 (defmethod show nil [_] "UN")
 (defmethod show :default [x] (str x))
 

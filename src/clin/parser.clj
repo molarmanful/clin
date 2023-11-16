@@ -19,7 +19,7 @@
          ::DEC (match x
                  "." [(any/->CMD ".")]
                  (\. :<< last) [(any/->CMD (butlast x))]
-                 :else [x])
+                 :else [(any/toNum x)])
          ::NUM [(any/toNum x)]
          :else [])
        (lazy-cat xs)
@@ -45,12 +45,12 @@
 
 (defn pdot
   [{t :t, :as p}]
-  (as-> p $
-    (match t
-      ::NUM $
-      :else (clean $))
-    (addc $ \.)
-    (assoc $ :t ::DEC)))
+  (-> p
+      (#(match t
+          ::NUM %
+          :else (clean %)))
+      (addc \.)
+      (assoc :t ::DEC)))
 
 (defn pstr
   [p c]
