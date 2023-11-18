@@ -1,7 +1,7 @@
 (ns clin.parser
+  (:use [clin.any.core])
   (:require [clojure.string :as str]
-            [clojure.core.match :refer [match]]
-            [clin.any :as any]))
+            [clojure.core.match :refer [match]]))
 
 (defrecord Parser [xs x t])
 (def dParser (->Parser (lazy-seq []) "" ::UN))
@@ -15,12 +15,12 @@
          ::STR [x]
          ::CMD [(if (every? #(str/includes? "([{}])" (str %)) x)
                   (map str x)
-                  (any/->CMD x))]
+                  (->CMD x))]
          ::DEC (match x
-                 "." [(any/->CMD ".")]
-                 (\. :<< last) [(any/->CMD (butlast x))]
-                 :else [(any/toNum x)])
-         ::NUM [(any/toNum x)]
+                 "." [(->CMD ".")]
+                 (\. :<< last) [(->CMD (butlast x))]
+                 :else [(bigdec x)])
+         ::NUM [(bigdec x)]
          :else [])
        (lazy-cat xs)
        (assoc dParser :xs)))
@@ -84,7 +84,7 @@
   (->> s
        (reduce choice dParser)
        clean
-       .xs))
+       :xs))
 
 (defn parse
   [s]

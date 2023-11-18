@@ -5,8 +5,8 @@
             [clojure.core.match :refer [match]]
             [clojure.string :as str]))
 
-(defrecord ENV [code lines stack scope gscope])
-(def dENV (->ENV any/dFN {} [] {} {}))
+(defrecord ENV [code stack lines gscope])
+(def dENV (->ENV any/dFN [] {} {}))
 
 ;;; HELPERS
 
@@ -39,8 +39,7 @@
 
 (defn arg
   [n {stack :stack, :as env} f]
-  (let [n (any/toINT n)
-        l (count stack)
+  (let [l (count stack)
         i (- l n)]
     (if (neg? i)
       (-> (str "stack len " l " < " n)
@@ -49,7 +48,7 @@
       (-> env
           (assoc :stack (subvec stack 0 i))
           (cons (subvec stack i))
-          (as-> $ (apply f $))))))
+          (->> (apply f))))))
 
 (defn mods
   [n env f]
@@ -64,7 +63,62 @@
 
 (defn numx [n env f] (modx n env #(apply any/numx f %&)))
 
+(declare cmds)
+
+(defn cmd
+  [env s]
+  (if-let [f (get cmds s)]
+    (f env)
+    (-> (str "cmd " s " not found")
+        Exception.
+        throw)))
+
+(defn step
+  [env t]
+  (match t
+    (_ :guard any/CMD?) (cmd env (:x t))
+    :else (push env t)))
+
+(defn exec
+  [{code :code, :as env}]
+  (println (show env))
+  (match (.-x code)
+    ([t & ts] :seq) (-> env
+                        (step t)
+                        (set-code ts)
+                        recur)
+    :else env))
+
+(defn f-eval-e
+  [env f]
+  (if (any/FN? f)
+    (-> env
+        (assoc :code f)
+        exec
+        :stack
+        (->> (assoc env :stack)))
+    (recur env (any/eFN f env))))
+
+(defn f-eval
+  [{code :code, :as env} f]
+  (if (any/FN? f)
+    (if (empty? code) (assoc env :code f) (f-eval-e env f))
+    (recur env (any/eFN f env))))
+
+(defn run
+  [s]
+  (->> s
+       parser/parse
+       (set-code dENV)
+       (trampoline exec)))
+
 ;;; LIB
+
+(defn EVAL [env] (arg 1 env f-eval))
+
+(defn toSEQ [env] (modx 1 env #(any/toSEQ %)))
+
+(defn toFN [env] (modx 1 env #(any/eFN % env)))
 
 (defn PICK
   [env]
@@ -111,7 +165,10 @@
 (defn MOD [env] (numx 2 env mod))
 
 (def cmds
-  {"pick" PICK,
+  {"#" EVAL,
+   ">Q" toSEQ,
+   ">F" toFN,
+   "pick" PICK,
    "nix" NIX,
    "dup" DUP,
    "over" OVER,
@@ -124,37 +181,3 @@
    "*" MUL,
    "/" DIV,
    "%" MOD})
-
-(defn cmd
-  [s env]
-  (if-let [f (get cmds s)]
-    (f env)
-    (throw (.Exception (str "cmd " s " not found")))))
-
-;;; RUN
-
-;TODO: toFN tail
-(defn f-eval [env f] (if (any/FN? f) () ()))
-
-(defn step
-  [env t]
-  (match t
-    (_ :guard any/CMD?) (cmd (:x t) env)
-    :else (push env t)))
-
-(defn exec
-  [{code :code, :as env}]
-  (println (show env))
-  (match (.-x code)
-    ([] :seq) env
-    ([t & ts] :seq) (-> env
-                        (step t)
-                        (set-code ts)
-                        recur)))
-
-(defn run
-  [s]
-  (->> s
-       parser/parse
-       (set-code dENV)
-       (trampoline exec)))

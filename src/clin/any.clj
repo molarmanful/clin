@@ -1,55 +1,14 @@
 (ns clin.any
+  (:require [clin.any.core :as ac :refer [ARR CHR Coll Idx INT Num SEQ STR TF]])
+  (:import [clin.any.core CMD FN])
   (:require [clojure.string :as str]
+            [clin.parser :as parser]
             [clin.util :as util]))
-
-;;; ALIASES
-
-(def ARR clojure.lang.IPersistentVector)
-(def Itr clojure.lang.Seqable)
-(def Idx clojure.lang.Indexed)
-(def SEQ clojure.lang.LazySeq)
-(def STR String)
-(def Num Number)
-(def NUM BigDecimal)
-(def DBL Double)
-(def INT Long)
-(def BIG BigInteger)
-(def TF Boolean)
-(def CHR Character)
-
-;;; CUSTOM TYPES
-
-(defrecord CMD [x]
-  Object
-    (toString [_] x))
-
-(defn CMD? [x] (instance? CMD x))
-
-(declare FN?)
-(deftype FN [x f n]
-  clojure.lang.ISeq
-    (cons [_ o] (FN. (cons o x) f n))
-    (empty [_] (FN. (empty x) f n))
-    (equiv [_ {x1 :x, :as o}] (and (FN? o) (= x x1)))
-    (first [_] (first x))
-    (more [_] (FN. (rest x) f n))
-    (next [_] (FN. (next x) f n))
-    (seq [t] (if (seq x) t nil))
-  Object
-    (toString [_] (str x)))
-
-(defn FN? [x] (instance? FN x))
-
-(def dFN (->FN (lazy-seq []) "" 0))
-
-(defn xFN [x t] (->FN x (.-f t) (.-n t)))
-
-(defn eFN [x {code :code}] (xFN x code))
 
 ;;; HIERARCHY
 
-(derive Itr ::Itrs)
-(derive ::Idx ::Itrs)
+(derive Coll ::Coll)
+(derive ::Idx ::Coll)
 
 (derive Idx ::Idx)
 (derive ::Str ::Idx)
@@ -61,23 +20,28 @@
 (derive STR ::Str)
 (derive CMD ::Str)
 
-;;; MULTIMETHODS
+;;; MULTI
 
 (defmulti show type)
 (defmulti toTF type)
 (defmulti toNum type)
-(defmulti toItr type)
 (defmulti toINT type)
 (defmulti toCHR type)
+(defmulti toItr type)
+(defmulti toSEQ type)
+(defmulti toFNx type)
 (defmulti vecz? type)
 (defmulti a-get
   #(-> [(type %) (integer? %2)]))
 (defmulti a-rem
   #(-> [(type %) (integer? %2)]))
 
+;;; METHODS
+;TODO: toSTR? (join "" for seqs)
+
 (defmethod show TF [x] (if x "$T" "$F"))
 (defmethod show CMD [{x :x}] x)
-(defmethod show FN [{:keys [f n]}] (str "(" f ":" n ")"))
+(defmethod show FN [x] (str "(" (.-f x) ":" (.-n x) ")"))
 (defmethod show SEQ [_] (str "[?]"))
 (defmethod show ARR [xs] (str (map show xs)))
 (defmethod show STR
@@ -93,11 +57,9 @@
 (defmethod show nil [_] "UN")
 (defmethod show :default [x] (str x))
 
-;TODO: toSTR? (join "" for seqs)
-
 (defmethod toTF TF [x] x)
 (defmethod toTF Num [x] (not= x 0))
-(defmethod toTF ::Itr [x] (boolean (not-empty x)))
+(defmethod toTF ::Coll [x] (boolean (not-empty x)))
 (defmethod toTF nil [_] false)
 (defmethod toTF :default [x] (boolean x))
 
@@ -115,7 +77,15 @@
 (defmethod toCHR nil [_] \u0000)
 (defmethod toCHR :default [x] (recur (first x)))
 
-(defmethod vecz? Itr [_] true)
+(defmethod toSEQ SEQ [x] x)
+(defmethod toSEQ FN [x] (.-x x))
+(defmethod toSEQ ::Coll [x] (lazy-seq x))
+(defmethod toSEQ :default [x] (lazy-seq [x]))
+
+(defmethod toFNx STR [x] (parser/parse x))
+(defmethod toFNx :default [x] (toSEQ x))
+
+(defmethod vecz? ::Coll [_] true)
 (defmethod vecz? :default [_] false)
 
 (defmethod a-get [SEQ true] [xs i] (nth xs (util/-i xs i) nil))
@@ -124,6 +94,8 @@
 (defmethod a-get [::Idx true] [xs i] (get xs (util/-i xs i)))
 (defmethod a-get [::Idx false] [xs i] (recur xs (toNum i)))
 (defmethod a-get :default [xs i] (get xs i))
+
+(declare xFN)
 
 (defmethod a-rem [SEQ true]
   [xs n]
@@ -140,10 +112,20 @@
 (defmethod a-rem [STR true]
   [xs n]
   (let [i (util/-i xs n)] (str (subs xs 0 i) (subs xs (inc i)))))
-(defmethod a-get [::Idx false] [xs n] (recur xs (toNum n)))
+(defmethod a-rem [::Idx false] [xs n] (recur xs (toNum n)))
 (defmethod a-rem :default [xs n] (recur (str xs) n))
 
 ;;; UTIL
+
+(defn CMD? [x] (instance? CMD x))
+
+(defn FN? [x] (instance? FN x))
+
+(def dFN (ac/->FN (lazy-seq []) "" 0 {}))
+
+(defn xFN [x t] (ac/->FN x (.-f t) (.-n t) (.-s t)))
+
+(defn eFN [x {code :code}] (xFN (toFNx x) code))
 
 (defn vecz
   [f & xs]
