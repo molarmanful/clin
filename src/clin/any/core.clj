@@ -25,7 +25,7 @@
 
 (deftype FN [x f n s]
   Seqable
-    (seq [t] (if (seq x) t nil))
+    (seq [_] (seq x))
   IPersistentCollection
     (equiv [_ {x1 :x, :as o}] (and (instance? FN o) (= x x1)))
     (empty [_] (FN. (empty x) f n s))

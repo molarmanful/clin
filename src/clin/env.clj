@@ -5,8 +5,8 @@
             [clojure.core.match :refer [match]]
             [clojure.string :as str]))
 
-(defrecord ENV [code stack lines gscope])
-(def dENV (->ENV any/dFN [] {} {}))
+(defrecord ENV [code stack lines gscope arr])
+(def dENV (->ENV any/dFN [] {} {} ()))
 
 ;;; HELPERS
 
@@ -28,12 +28,6 @@
   (->> xs
        (into stack)
        (assoc env :stack)))
-
-(defn show
-  [{stack :stack}]
-  (->> stack
-       (map any/show)
-       (str/join " ")))
 
 (defn set-code [env x] (assoc env :code (any/eFN x env)))
 
@@ -80,8 +74,8 @@
     :else (push env t)))
 
 (defn exec
-  [{code :code, :as env}]
-  (println (show env))
+  [{code :code, stack :stack, :as env}]
+  (println (any/show stack))
   (match (.-x code)
     ([t & ts] :seq) (-> env
                         (step t)
@@ -105,6 +99,23 @@
     (if (empty? code) (assoc env :code f) (f-eval-e env f))
     (recur env (any/eFN f env))))
 
+(defn f-eval-s
+  [env xs f]
+  (-> env
+      (assoc :stack xs)
+      (f-eval-e f)
+      :stack))
+
+(defn f-eval-a1
+  [env xs f]
+  (-> env
+      (f-eval-s xs f)
+      (any/a-get -1)))
+
+(defn f-eval-a2
+  [env xs f]
+  (let [s (f-eval-s env xs f)] [(s-get s -2) (s-get s -1)]))
+
 (defn run
   [s]
   (->> s
@@ -113,6 +124,8 @@
        (trampoline exec)))
 
 ;;; LIB
+
+(defn FORM [env] (modx 1 env any/show))
 
 (defn EVAL [env] (arg 1 env f-eval))
 
@@ -125,9 +138,11 @@
             (s-get 0)
             (->> (push %)))))
 
-(defn toSEQ [env] (modx 1 env #(any/toSEQ %)))
+(defn toSEQ [env] (modx 1 env any/toSEQ))
 
 (defn toFN [env] (modx 1 env #(any/eFN % env)))
+
+(defn toARR [env] (modx 1 env any/toARR))
 
 (defn PICK
   [env]
@@ -151,9 +166,13 @@
 
 (defn OVER [env] (push env (s-get env 1)))
 
+(defn DUPS [{stack :stack, :as env}] (push env stack))
+
 (defn POP [env] (arg 1 env (fn [x _] x)))
 
 (defn NIP [env] (modx 2 env #(%2)))
+
+(defn CLR [env] (assoc env :stack []))
 
 (defn SWAP
   [env]
@@ -173,21 +192,41 @@
 
 (defn MOD [env] (numx 2 env mod))
 
+(defn WRAP [env] (modx 1 env vector))
+
+(defn PAIR [env] (modx 2 env vector))
+
+(defn WRAP* [{stack :stack, :as env}] (assoc env :stack [stack]))
+
+(defn MAP
+  [env]
+  (modx 2
+        env
+        (fn [a b] (any/vecz (fn [f] (any/a-map #(f-eval-a1 env [%] f) a)) b))))
+
 (def cmds
-  {"#" EVAL,
+  {"form" FORM,
+   "#" EVAL,
    "Q" EVALQ,
    ">Q" toSEQ,
    ">F" toFN,
+   ">A" toARR,
    "pick" PICK,
    "nix" NIX,
    "dup" DUP,
    "over" OVER,
+   "dups" DUPS,
    "pop" POP,
    "nip" NIP,
+   "clr" CLR,
    "swap" SWAP,
    "_" NEG,
    "+" ADD,
    "-" SUB,
    "*" MUL,
    "/" DIV,
-   "%" MOD})
+   "%" MOD,
+   ",," WRAP,
+   "," PAIR,
+   ",`" WRAP*,
+   "map" MAP})

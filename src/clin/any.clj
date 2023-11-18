@@ -20,6 +20,10 @@
 (derive STR ::Str)
 (derive CMD ::Str)
 
+(derive Coll ::Itr)
+(underive ::Str ::Itr)
+(underive FN ::Itr)
+
 ;;; MULTI
 
 (defmulti show type)
@@ -30,11 +34,13 @@
 (defmulti toItr type)
 (defmulti toSEQ type)
 (defmulti toFNx type)
+(defmulti toARR type)
 (defmulti vecz? type)
 (defmulti a-get
   #(-> [(type %) (integer? %2)]))
 (defmulti a-rem
   #(-> [(type %) (integer? %2)]))
+(defmulti a-map (fn [_ x] (type x)))
 
 ;;; METHODS
 ;TODO: toSTR? (join "" for seqs)
@@ -43,7 +49,12 @@
 (defmethod show CMD [{x :x}] x)
 (defmethod show FN [x] (str "(" (.-f x) ":" (.-n x) ")"))
 (defmethod show SEQ [_] (str "[?]"))
-(defmethod show ARR [xs] (str (map show xs)))
+(defmethod show ARR
+  [xs]
+  (->> xs
+       (map show)
+       (str/join " ")
+       (#(str "[" % "]"))))
 (defmethod show STR
   [x]
   (-> x
@@ -85,7 +96,11 @@
 (defmethod toFNx STR [x] (parser/parse x))
 (defmethod toFNx :default [x] (toSEQ x))
 
-(defmethod vecz? ::Coll [_] true)
+(defmethod toARR ARR [x] x)
+(defmethod toARR ::Coll [x] (vec x))
+(defmethod toARR :default [x] (vec [x]))
+
+(defmethod vecz? ::Itr [_] true)
 (defmethod vecz? :default [_] false)
 
 (defmethod a-get [SEQ true] [xs i] (nth xs (util/-i xs i) nil))
@@ -115,17 +130,22 @@
 (defmethod a-rem [::Idx false] [xs n] (recur xs (toNum n)))
 (defmethod a-rem :default [xs n] (recur (str xs) n))
 
+(defmethod a-map SEQ [f xs] (map f xs))
+(defmethod a-map FN [f xs] (xFN (map f xs) xs))
+(defmethod a-map ARR [f xs] (mapv f xs))
+(defmethod a-map :default [f xs] (recur f (toARR xs)))
+
 ;;; UTIL
 
 (defn CMD? [x] (instance? CMD x))
 
 (defn FN? [x] (instance? FN x))
 
-(def dFN (ac/->FN (lazy-seq []) "" 0 {}))
+(def dFN (FN. (lazy-seq []) "" 0 {}))
 
-(defn xFN [x t] (ac/->FN x (.-f t) (.-n t) (.-s t)))
+(defn xFN [x t] (FN. (toFNx x) (.-f t) (.-n t) (.-s t)))
 
-(defn eFN [x {code :code}] (xFN (toFNx x) code))
+(defn eFN [x {code :code}] (xFN x code))
 
 (defn vecz
   [f & xs]
