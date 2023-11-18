@@ -116,6 +116,15 @@
 
 (defn EVAL [env] (arg 1 env f-eval))
 
+(defn EVALQ
+  [env]
+  (arg 1
+       env
+       #(-> %
+            (f-eval-e %2)
+            (s-get 0)
+            (->> (push %)))))
+
 (defn toSEQ [env] (modx 1 env #(any/toSEQ %)))
 
 (defn toFN [env] (modx 1 env #(any/eFN % env)))
@@ -166,6 +175,7 @@
 
 (def cmds
   {"#" EVAL,
+   "Q" EVALQ,
    ">Q" toSEQ,
    ">F" toFN,
    "pick" PICK,
