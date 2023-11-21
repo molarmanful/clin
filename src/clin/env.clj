@@ -77,8 +77,8 @@
   (println (any/show stack))
   (match (.-x code)
     ([t & ts] :seq) (-> env
-                        (step t)
                         (set-code ts)
+                        (step t)
                         recur)
     :else env))
 
@@ -197,6 +197,17 @@
 
 (defn WRAP* [{stack :stack, :as env}] (assoc env :stack [stack]))
 
+(defn FNa
+  [{code :code, :as env}]
+  (let [[xs ys n] (any/lambda-loop (.-x code) (lazy-seq []) 1)
+        [cs c] (if (and (<= n 0) (not-empty ys))
+                 [(drop-last ys) (last ys)]
+                 [ys (any/->CMD ")")])]
+    (-> env
+        (set-code xs)
+        (push (any/eFN cs env))
+        (step c))))
+
 (defn ARRa
   [{arr :arr, stack :stack, :as env}]
   (-> env
@@ -222,8 +233,6 @@
   {"form" FORM,
    "#" EVAL,
    "Q" EVALQ,
-   "[" ARRa,
-   "]" ARRb,
    ">Q" toSEQ,
    ">F" toFN,
    ">A" toARR,
@@ -245,4 +254,8 @@
    ",," WRAP,
    "," PAIR,
    ",`" WRAP*,
+   "(" FNa,
+   ")" identity,
+   "[" ARRa,
+   "]" ARRb,
    "map" MAP})

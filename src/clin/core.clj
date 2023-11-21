@@ -3,4 +3,4 @@
             [clin.env :as env])
   (:gen-class))
 
-(defn -main [& _] (env/run "[1 2 [3 5] 4] [2 3] +"))
+(defn -main [& _] (env/run "( 1 2 3 (4 5 ()) 6 7)"))

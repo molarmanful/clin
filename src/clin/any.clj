@@ -3,7 +3,8 @@
   (:import [clin.any.core CMD FN])
   (:require [clojure.string :as str]
             [clin.parser :as parser]
-            [clin.util :as util]))
+            [clin.util :as util]
+            [clojure.core.match :refer [match]]))
 
 ;;; HIERARCHY
 
@@ -137,6 +138,9 @@
 
 ;;; UTIL
 
+(def ->CMD ac/->CMD)
+(def ->FN ac/->FN)
+
 (defn CMD? [x] (instance? CMD x))
 
 (defn FN? [x] (instance? FN x))
@@ -161,3 +165,14 @@
       (apply f xs))))
 
 (defn numx [f & xs] (apply vecz #(apply f (map toNum %&)) xs))
+
+(defn lambda-loop
+  [xs ys n]
+  (if (<= n 0)
+    [xs ys n]
+    (match xs
+      ([c & cs] :seq) (let [d (cond (and (CMD? c) (str/includes? c "(")) 1
+                                    (and (CMD? c) (str/includes? c ")")) -1
+                                    :else 0)]
+                        (recur cs (lazy-cat ys (lazy-seq [c])) (+ n d)))
+      :else [xs ys n])))
