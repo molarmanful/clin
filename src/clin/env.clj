@@ -2,8 +2,7 @@
   (:require [clin.any :as any]
             [clin.parser :as parser]
             [clin.util :as util]
-            [clojure.core.match :refer [match]]
-            [clojure.string :as str]))
+            [clojure.core.match :refer [match]]))
 
 (defrecord ENV [code stack lines gscope arr])
 (def dENV (->ENV any/dFN [] {} {} ()))
@@ -198,6 +197,21 @@
 
 (defn WRAP* [{stack :stack, :as env}] (assoc env :stack [stack]))
 
+(defn ARRa
+  [{arr :arr, stack :stack, :as env}]
+  (-> env
+      (assoc :arr (cons stack arr))
+      CLR))
+
+(defn ARRb
+  [{arr :arr, stack :stack, :as env}]
+  (if (empty? arr)
+    env
+    (-> env
+        (assoc :stack (first arr)
+               :arr (rest arr))
+        (push stack))))
+
 (defn MAP
   [env]
   (modx 2
@@ -208,6 +222,8 @@
   {"form" FORM,
    "#" EVAL,
    "Q" EVALQ,
+   "[" ARRa,
+   "]" ARRb,
    ">Q" toSEQ,
    ">F" toFN,
    ">A" toARR,

@@ -13,9 +13,9 @@
   (->> (match t
          ::ESC [(str x \\)]
          ::STR [x]
-         ::CMD [(if (every? #(str/includes? "([{}])" (str %)) x)
-                  (map str x)
-                  (->CMD x))]
+         ::CMD (if (every? #(str/includes? "([{}])" (str %)) x)
+                 (map (comp ->CMD str) x)
+                 [(->CMD x)])
          ::DEC (match x
                  "." [(->CMD ".")]
                  (\. :<< last) [(->CMD (butlast x))]
