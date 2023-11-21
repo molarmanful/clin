@@ -4,7 +4,7 @@
             [clojure.core.match :refer [match]]))
 
 (defrecord Parser [xs x t])
-(def dParser (->Parser (lazy-seq []) "" ::UN))
+(def dParser (->Parser (lazy-seq) "" ::UN))
 
 (defn addc [{x :x, :as p} c] (assoc p :x (str x c)))
 

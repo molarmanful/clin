@@ -1,10 +1,11 @@
 (ns clin.any
-  (:require [clin.any.core :as ac :refer [ARR CHR Coll Idx INT Num SEQ STR TF]])
-  (:import [clin.any.core CMD FN])
   (:require [clojure.string :as str]
+            [clin.any.core :as ac :refer [ARR CHR Coll Idx INT Num SEQ STR TF]]
             [clin.parser :as parser]
             [clin.util :as util]
-            [clojure.core.match :refer [match]]))
+            [clojure.core.match :refer [match]])
+  (:import [clin.any.core CMD FN]))
+
 
 ;;; HIERARCHY
 
@@ -145,11 +146,13 @@
 
 (defn FN? [x] (instance? FN x))
 
-(def dFN (FN. (lazy-seq []) "" 0 {}))
+(def dFN (FN. (lazy-seq) "" 0 {}))
 
 (defn xFN [x t] (FN. (toFNx x) (.-f t) (.-n t) (.-s t)))
 
 (defn eFN [x {code :code}] (xFN x code))
+
+(defn lFN [x {code :code} n] (FN. (toFNx x) (.-f code) n (.-s code)))
 
 (defn vecz
   [f & xs]
@@ -167,12 +170,13 @@
 (defn numx [f & xs] (apply vecz #(apply f (map toNum %&)) xs))
 
 (defn lambda-loop
-  [xs ys n]
-  (if (<= n 0)
-    [xs ys n]
-    (match xs
-      ([c & cs] :seq) (let [d (cond (and (CMD? c) (str/includes? c "(")) 1
-                                    (and (CMD? c) (str/includes? c ")")) -1
-                                    :else 0)]
-                        (recur cs (lazy-cat ys (lazy-seq [c])) (+ n d)))
-      :else [xs ys n])))
+  ([xs] (lambda-loop xs (lazy-seq) 1))
+  ([xs ys n]
+   (if (<= n 0)
+     [xs ys n]
+     (match xs
+       ([c & cs] :seq) (let [d (cond (and (CMD? c) (str/includes? c "(")) 1
+                                     (and (CMD? c) (str/includes? c ")")) -1
+                                     :else 0)]
+                         (recur cs (lazy-cat ys (lazy-seq [c])) (+ n d)))
+       :else [xs ys n]))))

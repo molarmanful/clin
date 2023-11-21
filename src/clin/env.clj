@@ -2,10 +2,13 @@
   (:require [clin.any :as any]
             [clin.parser :as parser]
             [clin.util :as util]
-            [clojure.core.match :refer [match]]))
+            [clojure.string :as str]
+            [clojure.core.match :refer [match]])
+  (:import [java.util.concurrent ConcurrentHashMap]))
+
 
 (defrecord ENV [code stack lines gscope arr])
-(def dENV (->ENV any/dFN [] {} {} ()))
+(def dENV (->ENV any/dFN [] (ConcurrentHashMap.) (ConcurrentHashMap.) ()))
 
 ;;; HELPERS
 
@@ -55,6 +58,34 @@
 (defn modx [n env f] (mods n env (fn [& xs] [(apply f xs)])))
 
 (defn numx [n env f] (modx n env #(apply any/numx f %&)))
+
+(defn get-line
+  [{:keys [code lines]} n]
+  (println lines)
+  (.get lines [(.-f code) n]))
+
+(defn set-line
+  [{:keys [code lines], :as env} n s f]
+  (.put lines [(.-f code) n] [s f])
+  env)
+
+(defn fn-line
+  [env n]
+  (match (get-line env n)
+    [s f] (set-line env n s (or f (any/lFN s env n)))
+    :else env))
+
+(defn load-line
+  [env n]
+  (fn-line env n)
+  (let [[_ f] (get-line env n)] (if f (assoc env :code f) env)))
+
+(defn init-lines
+  [env ls]
+  (->> ls
+       (map-indexed #(-> [% %2]))
+       (run! (fn [[i x]] (set-line env i x nil))))
+  env)
 
 (declare cmds)
 
@@ -117,10 +148,10 @@
 
 (defn run
   [s]
-  (->> s
-       parser/parse
-       (set-code dENV)
-       (trampoline exec)))
+  (-> dENV
+      (init-lines (str/split-lines s))
+      (load-line 0)
+      (as-> $ (trampoline exec $))))
 
 ;;; LIB
 
@@ -128,7 +159,7 @@
 
 (defn EVAL [env] (arg 1 env f-eval))
 
-(defn EVALQ
+(defn EVALq
   [env]
   (arg 1
        env
@@ -136,6 +167,16 @@
             (f-eval-e %2)
             (s-get 0)
             (->> (push %)))))
+
+(defn EVALl [env])
+
+(defn EVALlrel [env])
+
+(defn EVALlhere [env])
+
+(defn EVALlnext [env])
+
+(defn EVALlprev [env])
 
 (defn toSEQ [env] (modx 1 env any/toSEQ))
 
@@ -199,7 +240,7 @@
 
 (defn FNa
   [{code :code, :as env}]
-  (let [[xs ys n] (any/lambda-loop (.-x code) (lazy-seq []) 1)
+  (let [[xs ys n] (any/lambda-loop (.-x code))
         [cs c] (if (and (<= n 0) (not-empty ys))
                  [(drop-last ys) (last ys)]
                  [ys (any/->CMD ")")])]
@@ -209,13 +250,13 @@
         (step c))))
 
 (defn ARRa
-  [{arr :arr, stack :stack, :as env}]
+  [{:keys [arr stack], :as env}]
   (-> env
       (assoc :arr (cons stack arr))
       CLR))
 
 (defn ARRb
-  [{arr :arr, stack :stack, :as env}]
+  [{:keys [arr stack], :as env}]
   (if (empty? arr)
     env
     (-> env
@@ -229,10 +270,17 @@
         env
         (fn [a b] (any/vecz (fn [f] (any/a-map #(f-eval-a1 env [%] f) a)) b))))
 
+(defn DOT [{code :code, :as env}] (if (empty? code) (EVALlnext env) ()))
+
 (def cmds
   {"form" FORM,
    "#" EVAL,
-   "Q" EVALQ,
+   "Q" EVALq,
+   "@@" EVALl,
+   "@~" EVALlrel,
+   "@" EVALlhere,
+   ";" EVALlnext,
+   ";;" EVALlprev,
    ">Q" toSEQ,
    ">F" toFN,
    ">A" toARR,
@@ -258,4 +306,5 @@
    ")" identity,
    "[" ARRa,
    "]" ARRb,
-   "map" MAP})
+   "map" MAP,
+   "." DOT})

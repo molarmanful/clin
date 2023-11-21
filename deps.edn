@@ -6,6 +6,7 @@
                            nrepl/nrepl {:mvn/version "1.1.0"}},
               :main-opts ["--main" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]" "--interactive"]}},
- :deps {org.clojure/core.match {:mvn/version "1.0.1"},
+ :deps {bsless/clj-fast {:mvn/version "0.0.11"},
+        org.clojure/core.match {:mvn/version "1.0.1"},
         org.flatland/ordered {:mvn/version "1.15.11"}},
  :paths ["src" "resources"]}
