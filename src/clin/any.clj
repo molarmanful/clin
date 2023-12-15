@@ -1,11 +1,11 @@
 (ns clin.any
-  (:require [clojure.string :as str]
-            [clin.any.core :as ac :refer [ARR CHR Coll Idx INT Num SEQ STR TF]]
+  (:require [clin.any.core :as ac :refer [ARR CHR Coll Idx INT Num SEQ STR TF]]
             [clin.parser :as parser]
             [clin.util :as util]
-            [clojure.core.match :refer [match]])
+            [clojure.core.match :refer [match]]
+            [structural.core :as s]
+            [clojure.string :as str])
   (:import [clin.any.core CMD FN]))
-
 
 ;;; HIERARCHY
 

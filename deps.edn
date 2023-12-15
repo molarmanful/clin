@@ -8,5 +8,6 @@
                           "[cider.nrepl/cider-middleware]" "--interactive"]}},
  :deps {bsless/clj-fast {:mvn/version "0.0.11"},
         org.clojure/core.match {:mvn/version "1.0.1"},
-        org.flatland/ordered {:mvn/version "1.15.11"}},
+        org.flatland/ordered {:mvn/version "1.15.11"},
+        structural/structural {:mvn/version "0.2.0-SNAPSHOT"}},
  :paths ["src" "resources"]}

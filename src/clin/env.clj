@@ -1,11 +1,9 @@
 (ns clin.env
   (:require [clin.any :as any]
-            [clin.parser :as parser]
             [clin.util :as util]
             [clojure.string :as str]
             [clojure.core.match :refer [match]])
   (:import [java.util.concurrent ConcurrentHashMap]))
-
 
 (defrecord ENV [code stack lines gscope arr])
 (def dENV (->ENV any/dFN [] (ConcurrentHashMap.) (ConcurrentHashMap.) ()))
